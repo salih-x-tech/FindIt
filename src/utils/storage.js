@@ -75,3 +75,70 @@ export function updateClaimStatus(id, status) {
 
   writeStorage(CLAIMS_KEY, updatedClaims)
 }
+
+// Find possible matches between lost and found items
+export function findMatches(items) {
+  const lostItems = items.filter(
+    (item) => item.type === 'lost' && item.status === 'active',
+  )
+
+  const foundItems = items.filter(
+    (item) => item.type === 'found' && item.status === 'active',
+  )
+
+  const normalize = (value) =>
+    (value || '').trim().toLowerCase()
+
+  const getKeywords = (description) =>
+    normalize(description)
+      .split(/\W+/)
+      .filter((word) => word.length > 2)
+
+  const matches = []
+
+  lostItems.forEach((lostItem) => {
+    foundItems.forEach((foundItem) => {
+      let score = 0
+
+      if (normalize(lostItem.category) === normalize(foundItem.category)) {
+        score += 30
+      }
+
+      if (normalize(lostItem.color) === normalize(foundItem.color)) {
+        score += 25
+      }
+
+      if (normalize(lostItem.location) === normalize(foundItem.location)) {
+        score += 25
+      }
+
+      const lostKeywords = new Set(getKeywords(lostItem.description))
+      const foundKeywords = new Set(getKeywords(foundItem.description))
+
+      const sharedKeywords = [...lostKeywords].filter((word) =>
+        foundKeywords.has(word),
+      )
+
+      const allKeywords = new Set([
+        ...lostKeywords,
+        ...foundKeywords,
+      ])
+
+      if (allKeywords.size > 0) {
+        score += Math.round(
+          (sharedKeywords.length / allKeywords.size) * 20,
+        )
+      }
+
+      if (score > 0) {
+        matches.push({
+          lostItem,
+          foundItem,
+          score,
+        })
+      }
+    })
+  })
+
+  return matches.sort((a, b) => b.score - a.score)
+}

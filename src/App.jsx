@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import ReportForm from './components/ReportForm'
+import { getItems } from './utils/storage'
 import {
   ArrowRight,
   CalendarDays,
@@ -78,30 +80,90 @@ const steps = [
 function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [activeView, setActiveView] = useState('home')
+  const [savedItems, setSavedItems] = useState(() => getItems())
+  const [activeFilter, setActiveFilter] = useState('all')
 
   const filteredItems = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
+  const query = searchQuery.trim().toLowerCase()
 
-    if (!query) return sampleItems
+  const allItems = [
+    ...savedItems.map((item) => ({
+      ...item,
+      name: item.itemName,
+      type: item.type === 'lost' ? 'Lost' : 'Found',
+      icon: '📦',
+      color: 'bg-blue-50',
+      isDemo: false,
+    })),
+    ...sampleItems.map((item) => ({
+      ...item,
+      isDemo: true,
+    })),
+  ]
 
-    return sampleItems.filter((item) =>
-      [
-        item.name,
-        item.category,
-        item.type,
-        item.location,
-        item.description,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    )
-  }, [searchQuery])
+
+  return allItems.filter((item) => {
+    const matchesSearch = [
+      item.name,
+      item.category,
+      item.type,
+      item.location,
+      item.description,
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(query)
+
+    const matchesFilter =
+      activeFilter === 'all' ||
+      item.type.toLowerCase() === activeFilter
+
+    return matchesSearch && matchesFilter
+  })
+}, [searchQuery, savedItems, activeFilter])
 
   const closeMobileMenu = () => setMobileMenuOpen(false)
+  const openReportForm = (type) => {
+  setActiveView(type === 'lost' ? 'report-lost' : 'report-found')
+  closeMobileMenu()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
   return (
     <div className="min-h-screen overflow-hidden bg-slate-50 text-slate-800">
+    {activeView !== 'home' && (
+      <section className="mx-auto max-w-3xl px-5 py-12">
+        <div className="mb-8">
+          <button
+            type="button"
+            onClick={() => setActiveView('home')}
+            className="text-sm font-semibold text-brand-blue hover:underline"
+          >
+            ← Back to Home
+          </button>
+
+          <h1 className="mt-5 text-3xl font-extrabold text-brand-navy">
+            {activeView === 'report-lost' ? 'Report a Lost Item' : 'Report a Found Item'}
+          </h1>
+
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            Provide accurate details to help reconnect belongings with their owners.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <ReportForm
+            type={activeView === 'report-lost' ? 'lost' : 'found'}
+            onSuccess={() => {
+              setSavedItems(getItems())
+              setActiveView('home')
+            }}
+            onCancel={() => setActiveView('home')}
+          />
+        </div>
+      </section>
+    )}
       {/* Navigation */}
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
@@ -140,12 +202,20 @@ function App() {
             >
               How It Works
             </a>
-            <a
-              href="#report-options"
+            <button
+              type="button"
+              onClick={() => openReportForm('lost')}
               className="text-sm font-medium text-slate-600 transition hover:text-brand-blue"
             >
               Report an Item
-            </a>
+            </button>
+            <button
+                type="button"
+                onClick={() => openReportForm('found')}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-7 py-4 font-semibold text-brand-navy transition hover:bg-slate-50"
+              >
+                Report Found
+              </button>
           </nav>
 
           <a
@@ -172,7 +242,22 @@ function App() {
               <a href="#home" onClick={closeMobileMenu}>Home</a>
               <a href="#recent-items" onClick={closeMobileMenu}>Browse Items</a>
               <a href="#how-it-works" onClick={closeMobileMenu}>How It Works</a>
-              <a href="#report-options" onClick={closeMobileMenu}>Report an Item</a>
+
+              <button
+                type="button"
+                onClick={() => openReportForm('lost')}
+                className="text-left"
+              >
+                Report Lost
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openReportForm('found')}
+                className="text-left"
+              >
+                Report Found
+              </button>
             </div>
           </nav>
         )}
@@ -207,12 +292,13 @@ function App() {
               </p>
 
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href="#recent-items"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-blue px-7 py-4 font-semibold text-white shadow-lg shadow-blue-950/20 transition hover:bg-blue-500"
-                >
-                  Explore Items <ArrowRight size={18} />
-                </a>
+                <button
+                    type="button"
+                    onClick={() => openReportForm('lost')}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-blue px-7 py-4 font-semibold text-white shadow-lg shadow-blue-950/20 transition hover:bg-blue-500"
+                  >
+                    Report Lost <ArrowRight size={18} />
+                  </button>
                 <a
                   href="#how-it-works"
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 px-7 py-4 font-semibold text-white transition hover:bg-white/10"
@@ -316,8 +402,8 @@ function App() {
                 Explore recent reports
               </h2>
               <p className="mt-3 max-w-xl leading-7 text-slate-500">
-                Search the sample reports below. In the next development stage,
-                these cards will use real reports saved in your browser.
+                Browse campus lost and found reports. Search by item,
+                category, or location, and filter reports by their type.
               </p>
             </div>
             <div className="inline-flex items-center gap-2 self-start rounded-full bg-blue-50 px-4 py-2 text-xs font-semibold text-brand-blue md:self-auto">
@@ -341,6 +427,27 @@ function App() {
                 className="w-full border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
               />
             </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            {[
+              { label: 'All Items', value: 'all' },
+              { label: 'Lost Items', value: 'lost' },
+              { label: 'Found Items', value: 'found' },
+            ].map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                onClick={() => setActiveFilter(filter.value)}
+                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+                  activeFilter === filter.value
+                    ? 'bg-brand-blue text-white shadow-sm'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:border-brand-blue hover:text-brand-blue'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
           </div>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -368,6 +475,15 @@ function App() {
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                     {item.category}
                   </p>
+                  <span
+                    className={`mt-2 inline-block rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                      item.isDemo
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-blue-50 text-blue-700'
+                    }`}
+                  >
+                    {item.isDemo ? 'DEMO DATA' : 'USER REPORT'}
+                  </span>
                   <h3 className="mt-2 text-lg font-bold text-brand-navy">
                     {item.name}
                   </h3>
@@ -394,17 +510,24 @@ function App() {
             <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
               <PackageSearch className="mx-auto text-slate-400" size={36} />
               <h3 className="mt-4 font-bold text-brand-navy">
-                No matching sample reports
+                {activeFilter === 'lost'
+                  ? 'No lost items found'
+                  : activeFilter === 'found'
+                  ? 'No found items found'
+                  : 'No matching reports found'}
               </h3>
               <p className="mt-2 text-sm text-slate-500">
-                Try another item name, category, or location.
+                Try another item name, category, or location, or submit a new report.
               </p>
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('')
+                  setActiveFilter('all')
+                }}
                 className="mt-4 font-semibold text-brand-blue hover:underline"
               >
-                Clear search
+                Clear search and filters
               </button>
             </div>
           )}

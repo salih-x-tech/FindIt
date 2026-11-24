@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertCircle, CheckCircle2, Send } from 'lucide-react'
+import { AlertCircle, Send } from 'lucide-react'
 import { addItem } from '../utils/storage'
 
 const categories = [
@@ -42,10 +42,9 @@ function ReportForm({ type, onSuccess, onCancel }) {
       !form.color.trim() ||
       !form.location.trim() ||
       !form.date ||
-      !form.description.trim() ||
-      !form.privateClue.trim()
+      !form.description.trim()
     ) {
-      setError('Please complete all fields before submitting.')
+      setError('Please complete all required fields before submitting.')
       return
     }
 
